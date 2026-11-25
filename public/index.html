@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Demo Visual - Express.js</title>
+  <style>
+    * { box-sizing: border-box; font-family: system-ui, -apple-system, sans-serif; }
+    body { background: #f4f6f8; color: #1e293b; margin: 0; padding: 2rem; }
+    .container { max-width: 1000px; margin: auto; display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+    .card { background: #ffffff; padding: 1.5rem; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.06); }
+    h2 { margin-top: 0; font-size: 1.25rem; border-bottom: 2px solid #e2e8f0; padding-bottom: 0.5rem; }
+    .input-group { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
+    input { flex: 1; padding: 0.6rem; border: 1px solid #cbd5e1; border-radius: 6px; }
+    button { padding: 0.6rem 1rem; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; }
+    .btn-primary { background: #2563eb; color: white; }
+    .btn-error { background: #ef4444; color: white; width: 100%; margin-top: 1rem; }
+    .task { display: flex; justify-content: space-between; align-items: center; padding: 0.6rem; border-bottom: 1px solid #f1f5f9; }
+    .done { text-decoration: line-through; color: #94a3b8; }
+    .log-item { display: flex; justify-content: space-between; font-family: monospace; font-size: 0.85rem; padding: 0.5rem; background: #f8fafc; border-radius: 6px; margin-bottom: 0.4rem; border-left: 4px solid #2563eb; }
+    .badge { padding: 2px 6px; border-radius: 4px; font-weight: bold; color: white; font-size: 0.75rem; }
+    .GET { background: #0ea5e9; } .POST { background: #10b981; } .PUT { background: #f59e0b; } .DELETE { background: #ef4444; }
+    .status-err { color: #dc2626; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <h2>Gestor de Tareas (Frontend + API)</h2>
+      <div class="input-group">
+        <input id="titulo" type="text" placeholder="Nueva tarea...">
+        <button class="btn-primary" onclick="crearTarea()">Agregar</button>
+      </div>
+      <div id="lista"></div>
+      <button class="btn-error" onclick="simularError()">Simular Petición Inválida (Error 404)</button>
+    </div>
+
+    <div class="card">
+      <h2>Monitor de Middleware Express (En Vivo)</h2>
+      <div id="logs"></div>
+    </div>
+  </div>
+
+  <script>
+    async function cargarTodo() {
+      const resTareas = await fetch('/api/tareas');
+      const tareas = await resTareas.json();
+      document.getElementById('lista').innerHTML = tareas.map(t => `
+        <div class="task">
+          <span class="${t.completada ? 'done' : ''}" style="cursor:pointer" onclick="toggleTarea(${t.id})">
+            ${t.completada ? '✅' : '⬜'} ${t.titulo}
+          </span>
+          <button onclick="eliminarTarea(${t.id})" style="background:#fee2e2; color:#dc2626;">✕</button>
+        </div>
+      `).join('');
+
+      const resLogs = await fetch('/api/logs');
+      const logs = await resLogs.json();
+      document.getElementById('logs').innerHTML = logs.map(l => `
+        <div class="log-item">
+          <span><span class="badge ${l.metodo}">${l.metodo}</span> ${l.ruta}</span>
+          <span class="${l.estado >= 400 ? 'status-err' : ''}">${l.estado} (${l.duracion})</span>
+        </div>
+      `).join('');
+    }
+
+    async function crearTarea() {
+      const input = document.getElementById('titulo');
+      if (!input.value.trim()) return;
+      await fetch('/api/tareas', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ titulo: input.value })
+      });
+      input.value = '';
+      cargarTodo();
+    }
+
+    async function toggleTarea(id) {
+      await fetch(`/api/tareas/${id}`, { method: 'PUT' });
+      cargarTodo();
+    }
+
+    async function eliminarTarea(id) {
+      await fetch(`/api/tareas/${id}`, { method: 'DELETE' });
+      cargarTodo();
+    }
+
+    async function simularError() {
+      await fetch('/api/tareas/999999', { method: 'DELETE' });
+      cargarTodo();
+    }
+
+    cargarTodo();
+  </script>
+</body>
+</html>
